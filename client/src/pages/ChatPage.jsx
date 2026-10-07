@@ -15,13 +15,14 @@ import {
   CheckCheck,
   Wifi,
   WifiOff,
+  User,
+  Edit3,
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { Button } from '../components/Button';
 import { API_URL } from '../config';
 
 const SOCKET_SERVER_URL = API_URL;
-const CURRENT_USERNAME = 'Nihal';
 
 export const ChatPage = () => {
   const navigate = useNavigate();
@@ -32,15 +33,39 @@ export const ChatPage = () => {
   const socketRef = useRef(null);
   const messagesEndRef = useRef(null);
 
+  // Dynamic username stored in localStorage
+  const [username, setUsername] = useState(() => {
+    return localStorage.getItem('chatflow_username') || '';
+  });
+  const [showUsernameModal, setShowUsernameModal] = useState(() => {
+    return !localStorage.getItem('chatflow_username');
+  });
+  const [modalInput, setModalInput] = useState('');
+
+  // Save username to localStorage and state
+  const handleSaveUsername = (e) => {
+    e.preventDefault();
+    const clean = modalInput.trim();
+    if (!clean) return;
+    localStorage.setItem('chatflow_username', clean);
+    setUsername(clean);
+    setShowUsernameModal(false);
+  };
+
+  // Open modal to change username
+  const handleOpenEditUsername = () => {
+    setModalInput(username);
+    setShowUsernameModal(true);
+  };
+
   // Format database / socket message into UI display format
   const formatMessage = (msg) => ({
     id: msg.id,
-    sender: msg.sender_name,
+    sender: msg.sender_name || 'Anonymous',
     content: msg.content,
     time: msg.created_at
       ? new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
       : new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-    isMe: msg.sender_name === CURRENT_USERNAME,
   });
 
   // Auto-scroll to bottom on new message
@@ -102,11 +127,13 @@ export const ChatPage = () => {
     const trimmed = inputMessage.trim();
     if (!trimmed || !socketRef.current) return;
 
+    const currentSender = username.trim() || 'Anonymous';
+
     socketRef.current.emit(
       'send_message',
       {
         content: trimmed,
-        username: CURRENT_USERNAME,
+        username: currentSender,
         channel: activeChannel,
       },
       (response) => {
@@ -129,6 +156,73 @@ export const ChatPage = () => {
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-surface text-on-surface">
+      {/* Username Prompt Modal on First Visit */}
+      {showUsernameModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="w-full max-w-sm bg-white rounded-2xl p-6 shadow-2xl border border-outline-variant/60 animate-in fade-in zoom-in-95">
+            <div className="flex flex-col items-center text-center mb-5">
+              <div className="relative mb-3">
+                <div className="absolute -inset-1 bg-gradient-to-r from-primary to-secondary rounded-2xl blur-sm opacity-30" />
+                <Logo size="md" className="relative shadow-md" />
+              </div>
+              <h3 className="text-lg font-bold text-on-surface">
+                {username ? 'Change Display Name' : 'Welcome to ChatFlow!'}
+              </h3>
+              <p className="text-xs text-on-surface-variant mt-1 max-w-[260px]">
+                {username
+                  ? 'Update how your name appears to others in chat.'
+                  : 'Please enter a username so other users know who you are in the chat.'}
+              </p>
+            </div>
+
+            <form onSubmit={handleSaveUsername} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-on-surface mb-1.5 uppercase tracking-wide">
+                  Your Username
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <User className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="text"
+                    autoFocus
+                    placeholder="e.g. Alice, Bob, Nihal"
+                    value={modalInput}
+                    onChange={(e) => setModalInput(e.target.value)}
+                    className="w-full py-2.5 pl-10 pr-3.5 bg-surface-lowest border border-outline-variant rounded-lg text-sm text-on-surface placeholder:text-outline/60 focus:outline-none focus:border-primary-container focus:ring-2 focus:ring-primary/20 transition-all"
+                    required
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                {username && (
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="md"
+                    onClick={() => setShowUsernameModal(false)}
+                    className="flex-1"
+                  >
+                    Cancel
+                  </Button>
+                )}
+                <Button
+                  type="submit"
+                  variant="primary"
+                  size="md"
+                  disabled={!modalInput.trim()}
+                  className="flex-1"
+                >
+                  {username ? 'Save' : 'Join Chat'}
+                </Button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* 1. Left Nav Rail & Channel Sidebar */}
       <aside className="w-64 flex flex-col bg-white border-r border-outline-variant/60">
         {/* Workspace Brand Header */}
@@ -204,11 +298,23 @@ export const ChatPage = () => {
         {/* Current User Card & Sign Out */}
         <div className="p-3 border-t border-outline-variant/50 bg-slate-50/50 flex items-center justify-between">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary text-white flex items-center justify-center font-bold text-xs flex-shrink-0">
-              {CURRENT_USERNAME.charAt(0)}
+            <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-primary to-secondary text-white flex items-center justify-center font-bold text-xs flex-shrink-0 shadow-sm">
+              {username ? username.charAt(0).toUpperCase() : '?'}
             </div>
             <div className="min-w-0">
-              <p className="text-xs font-semibold text-on-surface truncate">{CURRENT_USERNAME}</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-xs font-semibold text-on-surface truncate">
+                  {username || 'Anonymous'}
+                </p>
+                <button
+                  type="button"
+                  onClick={handleOpenEditUsername}
+                  className="text-slate-400 hover:text-primary transition-colors p-0.5 rounded"
+                  title="Edit username"
+                >
+                  <Edit3 className="w-3 h-3" />
+                </button>
+              </div>
               <div className="flex items-center gap-1.5 text-[10px]">
                 <span
                   className={`w-2 h-2 rounded-full ${
@@ -303,7 +409,7 @@ export const ChatPage = () => {
               Welcome to #{activeChannel}
             </h3>
             <p className="text-xs text-on-surface-variant max-w-sm mx-auto mt-0.5">
-              This is the start of the #{activeChannel} channel. Type a message below to test real-time Socket.IO chat!
+              This is the start of the #{activeChannel} channel. Messages are delivered in real-time to everyone in the room!
             </p>
           </div>
 
@@ -319,48 +425,51 @@ export const ChatPage = () => {
               No messages yet in this channel. Be the first to say hello!
             </div>
           ) : (
-            messages.map((msg) => (
-              <div
-                key={msg.id}
-                className={`flex gap-3 max-w-[80%] ${
-                  msg.isMe ? 'ml-auto flex-row-reverse' : ''
-                }`}
-              >
+            messages.map((msg) => {
+              const isMe = username ? msg.sender === username : false;
+              return (
                 <div
-                  className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold text-white shadow-sm ${
-                    msg.isMe
-                      ? 'bg-primary'
-                      : 'bg-gradient-to-tr from-secondary to-purple-600'
+                  key={msg.id}
+                  className={`flex gap-3 max-w-[80%] ${
+                    isMe ? 'ml-auto flex-row-reverse' : ''
                   }`}
                 >
-                  {msg.sender ? msg.sender.charAt(0).toUpperCase() : '?'}
-                </div>
-
-                <div className={`space-y-1 ${msg.isMe ? 'items-end text-right' : ''}`}>
-                  <div className="flex items-center gap-2 text-[11px] text-on-surface-variant">
-                    <span className="font-semibold text-on-surface">{msg.sender}</span>
-                    <span>{msg.time}</span>
-                  </div>
-
                   <div
-                    className={`p-3 rounded-2xl text-xs leading-relaxed shadow-sm break-words ${
-                      msg.isMe
-                        ? 'bg-primary text-white rounded-br-xs'
-                        : 'bg-white border border-outline-variant/80 text-on-surface rounded-tl-xs'
+                    className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-xs font-bold text-white shadow-sm ${
+                      isMe
+                        ? 'bg-primary'
+                        : 'bg-gradient-to-tr from-secondary to-purple-600'
                     }`}
                   >
-                    {msg.content}
+                    {msg.sender ? msg.sender.charAt(0).toUpperCase() : '?'}
                   </div>
 
-                  {msg.isMe && (
-                    <div className="flex items-center justify-end gap-1 text-[10px] text-slate-400 pt-0.5">
-                      <span>Saved</span>
-                      <CheckCheck className="w-3 h-3 text-primary" />
+                  <div className={`space-y-1 ${isMe ? 'items-end text-right' : ''}`}>
+                    <div className="flex items-center gap-2 text-[11px] text-on-surface-variant">
+                      <span className="font-semibold text-on-surface">{msg.sender}</span>
+                      <span>{msg.time}</span>
                     </div>
-                  )}
+
+                    <div
+                      className={`p-3 rounded-2xl text-xs leading-relaxed shadow-sm break-words ${
+                        isMe
+                          ? 'bg-primary text-white rounded-br-xs'
+                          : 'bg-white border border-outline-variant/80 text-on-surface rounded-tl-xs'
+                      }`}
+                    >
+                      {msg.content}
+                    </div>
+
+                    {isMe && (
+                      <div className="flex items-center justify-end gap-1 text-[10px] text-slate-400 pt-0.5">
+                        <span>Saved</span>
+                        <CheckCheck className="w-3 h-3 text-primary" />
+                      </div>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))
+              );
+            })
           )}
 
           <div ref={messagesEndRef} />
@@ -382,7 +491,11 @@ export const ChatPage = () => {
 
             <input
               type="text"
-              placeholder={`Message #${activeChannel} as ${CURRENT_USERNAME}...`}
+              placeholder={
+                username
+                  ? `Message #${activeChannel} as ${username}...`
+                  : `Message #${activeChannel}...`
+              }
               value={inputMessage}
               onChange={(e) => setInputMessage(e.target.value)}
               className="flex-1 bg-transparent border-none text-xs text-on-surface placeholder:text-slate-400 focus:outline-none"

@@ -26,7 +26,12 @@ export const LoginPage = () => {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    // MVP flow without backend auth: navigate directly to Chat page
+    if (email.trim()) {
+      const namePart = email.trim().split('@')[0];
+      const formatted = namePart.charAt(0).toUpperCase() + namePart.slice(1);
+      localStorage.setItem('chatflow_username', formatted);
+    }
+    // Navigate directly to Chat page
     navigate('/chat');
   };
 
