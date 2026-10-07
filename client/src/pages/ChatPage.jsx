@@ -18,8 +18,9 @@ import {
 } from 'lucide-react';
 import { Logo } from '../components/Logo';
 import { Button } from '../components/Button';
+import { API_URL } from '../config';
 
-const SOCKET_SERVER_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000';
+const SOCKET_SERVER_URL = API_URL;
 const CURRENT_USERNAME = 'Nihal';
 
 export const ChatPage = () => {
